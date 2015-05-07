@@ -141,7 +141,7 @@ if __name__=="__main__" :
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", help="Input dataset")
     parser.add_argument("-o", "--outdir", help="Store the plots in this directory (default: plots/")
-    parser.add_argument("-v", "--var", help="Choose the var to print")
+    parser.add_argument("-v", "--var", help="Choose the var to print",default="")
     args = parser.parse_args()
     input = args.input
     outdir = args.outdir
@@ -167,6 +167,9 @@ if __name__=="__main__" :
     setAtlasStyle()
     vars = [ 'lept1Pt', 'lept2Pt', 'mDeltaR', 'jet1Pt',
              'mll', 'dpb', 'R2', 'met', 'njets', 'pTll' ]
-    for v in vars :
-        make_isr_plots(signals, str(v), outdir)
+    if var not "" :
+        make_isr_plots(signals, str(var), outdir)
+    else :
+        for v in vars :
+            make_isr_plots(signals, str(v), outdir)
     
