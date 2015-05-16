@@ -2,10 +2,63 @@ import ROOT as r
 import math
 from array import array
 
+r.TH1F.__init__._creates = False
+r.TH2F.__init__._creates = False
+r.TCanvas.__init__._creates = False
+r.TPad.__init__._creates = False
+r.TLine.__init__._creates = False
+
+
 
 ''' -----------------------------------------------------'''
 '''   Canvas Methods                                     '''
 ''' -----------------------------------------------------'''
+class RatioCanvas :
+    '''
+    Container class for a canvas with two pads divided 
+    to make ratio plots
+    '''
+    def __init__(self, name) :
+        self.canvas = r.TCanvas(name, name, 768, 768)
+        self.upper_pad = r.TPad("upper","upper", 0.0, 0.0, 1.0, 1.0)
+        self.lower_pad = r.TPad("lower","lower", 0.0, 0.0, 1.0, 1.0)
+        self.set_pad_dimensions()
+
+    def set_pad_dimensions(self) :
+        can = self.canvas
+        up  = self.upper_pad
+        dn  = self.lower_pad
+        
+        can.cd()
+        up_height = 0.75
+        dn_height = 0.31
+        up.SetPad(0.0, 1.0-up_height, 1.0, 1.0)
+        dn.SetPad(0.0, 0.0, 1.0, dn_height)
+        
+        up.SetTickx(0)
+        dn.SetGrid(1)
+       
+        up.SetFrameFillColor(0)
+        up.SetFillColor(0)
+        up.SetLeftMargin(0.1)
+        up.SetRightMargin(0.075)
+    
+        dn.SetFrameFillColor(0)
+        dn.SetFillColor(0)
+        dn.SetLeftMargin(0.1)
+        dn.SetRightMargin(0.075)
+        dn.SetBottomMargin(0.4)
+        dn.SetTopMargin(0.05) 
+
+        up.Draw()
+        dn.Draw()
+        can.Update()
+        
+        self.canvas = can
+        self.upper_pad = up
+        self.lower_pad = dn
+
+
 def myCanvas(name, width, height, nxpads=1, nypads=1) :
     '''
     Book a TCanvas and return it
@@ -16,6 +69,7 @@ def myCanvas(name, width, height, nxpads=1, nypads=1) :
     c.Modified()
     return c
     
+
 ''' -----------------------------------------------------'''
 '''   TH1 Methods                                        '''
 ''' -----------------------------------------------------'''
@@ -28,6 +82,11 @@ def myTH1F(name, title, nbin, nlow, nhigh, xtitle, ytitle) :
     h.GetYaxis().SetTitle(ytitle)
     h.Sumw2()
     return h
+
+def remove_x_title(h) :
+    h.GetXaxis().SetTitleOffset(999)
+def remove_y_title(h) :
+    h.GetYaxis().SetTitleOffset(999)
 
 def show_under_overflow(hist, option) :
     '''
@@ -85,6 +144,40 @@ def th1_to_tgraph_asym(hist) :
     g.SetFillStyle(3004)
     g.SetFillColor(r.kBlack)
     return g
+
+def divide_histograms(h1, h2, xtitle, ytitle) :
+    '''
+    Provide two histograms and divide h1/h2.
+    Converts final result into tgraph.
+    '''
+    nbins = h1.GetNbinsX()
+    xlow = h1.GetBinCenter(1)
+    xhigh = h1.GetBinCenter(nbins+1)
+    h3 = h1.Clone("ratio")
+    h3.GetYaxis().SetTitle(ytitle)
+    h3.GetXaxis().SetTitle(xtitle)
+
+    h3.GetYaxis().SetTitleOffset(0.45*h3.GetYaxis().GetTitleOffset())
+    h3.GetYaxis().SetLabelSize(2*h3.GetYaxis().GetLabelSize())
+    h3.GetYaxis().SetTitleFont(42)
+    h3.GetYaxis().SetTitleSize(0.09)
+
+    h3.GetXaxis().SetTitleOffset(1.75*h3.GetYaxis().GetTitleOffset())
+    h3.GetXaxis().SetLabelSize(3*h3.GetXaxis().GetLabelSize())
+    h3.GetXaxis().SetTitleSize(0.15)
+    h3.GetXaxis().SetTitleFont(42)
+    #h3 = myTH1F("ratio", "ratio", nbins, xlow, xhigh, xtitle, ytitle)
+    
+    for i in range(1, nbins+1) :
+        c1 = float(h1.GetBinContent(i))
+        c2 = float(h2.GetBinContent(i))
+        if c2 == 0 : break
+        c3 = c1 / c2
+        h3.SetBinContent(i, c3)
+    
+    return h3
+        
+    
 
 
 ''' -----------------------------------------------------'''
@@ -147,6 +240,13 @@ def drawAtlasLabel(pad, descriptor, xpos=None, ypos=None) :
     label = "#bf{#it{ATLAS}} %s"%descriptor
     return topLeftLabel(pad, label, xpos, ypos)
 
+''' -----------------------------------------------------'''
+'''   TLine Methods                                      '''
+''' -----------------------------------------------------'''
+def draw_line(xl, yl, xh, yh, color=r.kBlack) :
+    l = r.TLine(xl, yl, xh, yh)
+    l.SetLineColor(color)
+    l.Draw('same')
 
 ''' -----------------------------------------------------'''
 '''   Style Methods                                      '''
