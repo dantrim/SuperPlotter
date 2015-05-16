@@ -22,52 +22,53 @@ def make_isr_plots(signals, v, outdir) :
     xtite = ""
     var = ""
     bins = []
+    nb = 0
+    nb = xlow = xhigh = 0
     if v=="lept1Pt" :
-        xtitle = "p_{T}^{lead} [GeV]"
+        xtitle = "p_{T}^{lead lep} [GeV]"
         var = "lept1Pt"
-        bins = [10,20,30,40,50,60,70,80,90,100,110,120,130]
+        nb, xlow, xhigh = 15, 10, 100
     elif v=="lept2Pt" :
-        xtitle = "p_{T}^{sub-lead} [GeV]"
+        xtitle = "p_{T}^{sub-lead lep} [GeV]"
         var = "lept2Pt"
-        bins = [10,20,30,40,50,60,70,80,90]
+        nb, xlow, xhigh = 8, 10, 90
     elif v=="mDeltaR" :
         xtitle = "M_{#Delta}^{R} [GeV]"
         var = "mDeltaR"
-        bins = [0,10,20,30,40,60,95,120]
+        nb, xlow, xhigh = 8, 0, 80
     elif v=="jet1Pt" :
-        xtitle = "p_{T}^{lead-jet} [GeV]"
+        xtitle = "p_{T}^{lead jet} [GeV]"
         var = "jet1Pt"
-        bins = [20,60,100,140,180,220,260,300,340,380]
+        nb, xlow, xhigh = 10, 20, 200
     elif v=="mll" :
         xtitle = "m_{ll} [GeV]"
         var = "mll"
-        bins = [20,40,60,80,100,120,160,200,240]
+        nb, xlow, xhigh = 11, 20, 240
     elif v=="dpb" :
         var='dphi_ll_vBetaT'
         xtitle = "#Delta#phi_{#beta}^{R}"
-        bins = [0,0.3,0.6,0.9,1.2,1.5,1.8,2.1,2.4,2.7,3.0]
+        nb, xlow, xhigh = 10, 0, 3.0
     elif v=="R2" :
         var = 'R2'
         xtitle = "R_{2}"
-        bins = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0]
+        nb, xlow, xhigh = 10, 0, 1.0
     elif v=="met" :
         var = 'met' 
         xtitle = "E_{T}^{miss} [GeV]"
-        bins = [0,40,80,120,160,200,240,290,350,475]
+        nb, xlow, xhigh = 15, 0, 175
     elif v=="njets" :
         var = 'nCentralLightJets'
         xtitle = "N_{jets}^{CL20}"
-        bins = [0,1,2,3,4,5,6,7,8]
+        nb, xlow, xhigh = 5, 0, 5
     elif v=="pTll" :
         var = "pTll"
         xtitle = "p_{T}^{ll} [GeV]"
-        bins = [10,20,30,40,50,60,70,80]
-        
-    x = array.array('d',bins)
-    h_nom      = r.TH1F("herwig", "herwig;%s;%s" %(xtitle,ytitle),len(bins)-1,x)
-    h_isr_nom  = r.TH1F("herwig+isr", "herwig+isr;%s;%s" %(xtitle,ytitle),len(bins)-1,x)
-    h_up       = r.TH1F("herwig+isrUP",  "up;%s;%s"  %(xtitle,ytitle),len(bins)-1,x)
-    h_down     = r.TH1F("herwig+isrDOWN","down;%s;%s"%(xtitle,ytitle),len(bins)-1,x)
+        nb, xlow, xhigh = 12, 10, 80
+       
+    h_nom       = myTH1F("herwig",          "herwig",               nb, xlow, xhigh, xtitle, ytitle)
+    h_isr_nom   = myTH1F("herwig+isr",      "+ isr reweight",       nb, xlow, xhigh, xtitle, ytitle)
+    h_up        = myTH1F("herwig+isrUP",    "+ isr reweight +1#sigma",      nb, xlow, xhigh, xtitle, ytitle)
+    h_down      = myTH1F("herwig+isrDOWN",  "+ isr reweight -1#sigma",    nb, xlow, xhigh, xtitle, ytitle)
     
     colors = {}
     colors["herwig"] = r.kBlack
@@ -81,7 +82,10 @@ def make_isr_plots(signals, v, outdir) :
     
     canvas = r.TCanvas("can","can",768,768)
     canvas.SetLogy(True)
-    leg = r.TLegend(0.57,0.69,0.90,0.93)
+    if v=="dpb" :
+        leg = r.TLegend(0.2, 0.69, 0.53, 0.93)
+    else :
+        leg = r.TLegend(0.57,0.69,0.90,0.93)
     leg.SetBorderSize(0)
     leg.SetLineColor(0)
     leg.SetLineWidth(0)
@@ -93,20 +97,15 @@ def make_isr_plots(signals, v, outdir) :
     for h in [h_nom, h_isr_nom, h_up, h_down] :
         h.SetLineWidth(2)
         h.GetYaxis().SetTitleOffset(1.1*h.GetYaxis().GetTitleOffset())
-     #   sel = "1"
         sel = r.TCut("1")
         weight = ""
         if h.GetName()=="herwig" :
-         #   weight = "eventweight/isr_weight_nom"
             weight = r.TCut("eventweight/isr_weight_nom")
         elif h.GetName()=="herwig+isr" :
-           # weight = "eventweight"
             weight = r.TCut("eventweight")
         elif h.GetName()=="herwig+isrUP" :
-           # weight = "eventweight*syst_ISRUP"
             weight = r.TCut("eventweight*syst_ISRUP")
         elif h.GetName()=="herwig+isrDOWN" :
-           # weight = "eventweight*syst_ISRDOWN"
             weight = r.TCut("eventweight*syst_ISRDOWN")
         
         cmd = ''
@@ -115,28 +114,60 @@ def make_isr_plots(signals, v, outdir) :
         else :
             cmd = var+"/1000>>"+h.GetName() 
         signals[0].tree.Draw(cmd, sel*weight) 
-        leg.AddEntry(h,h.GetName(),"l")
-    canvas.cd()
-    max = 4000
-    miny = 0.1
-    h_nom.GetYaxis().SetRangeUser(miny,1.3*max)
-    h_isr_nom.GetYaxis().SetRangeUser(miny,1.3*max)
-    h_up.GetYaxis().SetRangeUser(miny,1.3*max)
-    h_down.GetYaxis().SetRangeUser(miny,1.3*max)
-    h_nom.Draw('hist e')
-    x = h_nom.Integral()
-    m = h_nom.GetMean()
-    h_isr_nom.Draw('hist e same')
-    h_up.Draw('hist e same')
-    h_down.Draw('hist e same')
+        leg.AddEntry(h,h.GetTitle(),"l")
+    
+    # ratio
+    ratio = RatioCanvas("rcan")
+    print ratio
+    ratio.canvas.cd()
+    ratio.upper_pad.cd()
+    h_nom.Draw("hist e")
+    h_isr_nom.Draw("hist same e")
+    h_up.Draw("hist same e")
+    h_down.Draw("hist same e")
+    if v=="dpb" or v=="lept2Pt" or v=="lept1Pt" or v=="mDeltaR" or v=="mll" or v=="pTll" :
+        h_nom.GetYaxis().SetRangeUser(0, 1.3*h_nom.GetMaximum())
+    
+    h_ratio_nom_up = divide_histograms (h_up,       h_nom,  xtitle, "#frac{weighted}{un-weighted}")
+    h_ratio_nom_dn = divide_histograms (h_down,     h_nom,  "", "")
+    h_ratio_nom_isr = divide_histograms(h_isr_nom,  h_nom,  "", "")
+    h_nom.GetXaxis().SetLabelOffset(999)
+    h_nom.GetXaxis().SetTitleOffset(999)
+    h_nom.GetYaxis().SetTitleOffset(0.9*h_nom.GetYaxis().GetTitleOffset())
+    yl = 0.5
+    yh = 2.0
+    if v=="jet1Pt" :
+        yl, yh = 0.8, 2.4
+    elif v=="mDeltaR" :
+        yl, yh = 0.7, 2.4
+    elif v=="met" :
+        yl, yh = 0.7, 2.4
+    elif v=="R2" :
+        yl, yh = 0.7, 2.4
+    elif v=="pTll" and signals[0].mY==80 :
+        yl, yh = 0.7, 2.4
+    h_ratio_nom_up.GetYaxis().SetRangeUser(yl,yh)
+    h_ratio_nom_up.SetLineColor(r.kBlue)
+    h_ratio_nom_up.SetLineWidth(2)
+    h_ratio_nom_dn.GetYaxis().SetRangeUser(yl,yh)
+    h_ratio_nom_dn.SetLineColor(r.kRed)
+    h_ratio_nom_dn.SetLineWidth(2)
+    h_ratio_nom_isr.GetYaxis().SetRangeUser(yl,yh)
+    h_ratio_nom_isr.SetLineColor(r.kGreen)
+    h_ratio_nom_isr.SetLineWidth(2)
+    ratio.lower_pad.cd()
+
+    h_ratio_nom_up.Draw("hist")
+    h_ratio_nom_dn.Draw("hist same")
+    h_ratio_nom_isr.Draw("hist same")
+
+    ratio.upper_pad.cd()
     leg.Draw('same')
     outname = var+"_sr_"+str(signals[0].mX)+"_"+str(signals[0].mY)+".eps"
-    canvas.SaveAs(outname)
-    
+    ratio.canvas.SaveAs(outname)
     mv_file_to_dir(outname, str(outdir), True)
     
-        
-
+#################################        
 if __name__=="__main__" :
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", help="Input dataset")
@@ -167,7 +198,7 @@ if __name__=="__main__" :
     setAtlasStyle()
     vars = [ 'lept1Pt', 'lept2Pt', 'mDeltaR', 'jet1Pt',
              'mll', 'dpb', 'R2', 'met', 'njets', 'pTll' ]
-    if var not "" :
+    if var != "" :
         make_isr_plots(signals, str(var), outdir)
     else :
         for v in vars :
