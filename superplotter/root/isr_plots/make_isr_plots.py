@@ -97,7 +97,7 @@ def make_isr_plots(signals, v, outdir) :
     for h in [h_nom, h_isr_nom, h_up, h_down] :
         h.SetLineWidth(2)
         h.GetYaxis().SetTitleOffset(1.1*h.GetYaxis().GetTitleOffset())
-        sel = r.TCut("1")
+        sel = r.TCut("(isOS==1 && lept1Pt>10000. && lept2Pt>10000. && lept1Eta<2.5 && lept2Eta<2.5)")
         weight = ""
         if h.GetName()=="herwig" :
             weight = r.TCut("eventweight/isr_weight_nom")
