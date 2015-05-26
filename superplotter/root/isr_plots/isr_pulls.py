@@ -22,6 +22,7 @@ import glob
 import argparse
 import math
 import numpy
+from array import array
 
 
 class Point(Signal) :
@@ -64,20 +65,21 @@ def sort_by_mc1(signals) :
     '''
     signals.sort(key=lambda x : x.mX, reverse=True)
 
-def draw_text(x, y, color, text, size=0.04, angle=0.0, ndc=True) :
+def draw_text(x, y, color, text, size=0.04, angle=0.0, ndc=True, font=62) :
     l = ROOT.TLatex()
     ROOT.SetOwnership(l, False)
     l.SetTextSize(size)
     if ndc : l.SetNDC()
-    l.SetTextFont(62)
+    l.SetTextFont(font)
     l.SetTextAngle(angle)
     l.SetTextColor(color)
     l.DrawLatex(x,y,text)
 
 
-def draw_line(xl, yl, xh, yh, color=ROOT.kBlack, style=2) :
+def draw_line(xl, yl, xh, yh, color=ROOT.kBlack, style=2, ndc=False) :
     l = ROOT.TLine(xl, yl, xh, yh)
     ROOT.SetOwnership(l, False)
+    l.SetNDC(ndc)
     l.SetLineColor(color)
     l.SetLineStyle(style)
     l.Draw("same")
@@ -100,19 +102,20 @@ class ISRCanvas :
         dn  = self.lower_pad
         
         can.cd()
-        up_height = 0.60
-        dn_height = 0.40
+        up_height = 0.55
+        dn_height = 0.50
         up.SetPad(0.0,1.0-up_height,1.0,1.0)
         dn.SetPad(0.0,0.0,1.0,dn_height)
         
         up.SetTickx(0)
         dn.SetGrid(0)
+        dn.SetTicky(0)
         
         up.SetFrameFillColor(0)
         up.SetFillColor(0)
         dn.SetLeftMargin(0.04)
         dn.SetRightMargin(0.01)
-        dn.SetBottomMargin(0.6)
+        dn.SetBottomMargin(0.5)
         dn.SetTopMargin(0.03)
         
         up.SetLeftMargin(0.04)
@@ -213,49 +216,51 @@ def get_isr_error(signals, srs, up_or_down="") :
                 s.sys_err_dn[sr] = float(s.nom_yield[sr]) - float(tot_integral)
 
 def make_isr_pullplots(unw, isr, srs) :
-    thisr="Super1a"
+    thisr="Super1c"
 
     isrcan = ISRCanvas("isrcan")
     isrcan.canvas.cd()
     
     # plot the yields in the lower pad
     isrcan.lower_pad.cd()
-    isrcan.lower_pad.SetGrid(1,1)
-    
-    h_yld = ROOT.TH2F("h_yld", "", len(unw), 0, len(unw), len(srs), 0, len(srs))
-    h_yld.GetYaxis().SetNdivisions(2)
+    isrcan.lower_pad.SetGrid(1,0)
+
+    h_yld = ROOT.TH2F("h_yld", "", len(unw), 0, len(unw), len(srs)+1, 0, len(srs)+1)
     for i, s in enumerate(unw) :
         h_yld.GetXaxis().SetBinLabel(i+1, "(%.1f, %.1f)"%(s.mX,s.mY))
     h_yld.GetYaxis().SetBinLabel(1, "")
     h_yld.GetYaxis().SetBinLabel(2, "")
 
     h_yld.GetXaxis().LabelsOption("v")
-    h_yld.GetXaxis().SetLabelFont(62)
-    h_yld.GetXaxis().SetLabelOffset(5 * h_yld.GetXaxis().GetLabelOffset())
-    h_yld.GetXaxis().SetLabelSize(3.8 * h_yld.GetXaxis().GetLabelSize())
+    h_yld.GetXaxis().SetLabelFont(42)
+    h_yld.GetXaxis().SetLabelOffset(3.2 * h_yld.GetXaxis().GetLabelOffset())
+    h_yld.GetXaxis().SetLabelSize(3.4 * h_yld.GetXaxis().GetLabelSize())
     
     width = h_yld.GetXaxis().GetBinWidth(1)
     h_yld.Draw()
+    draw_line(0.0, 1.0, len(unw), 1.0, color=ROOT.kBlack)
     isrcan.canvas.Update() 
-    
-    draw_text(0.016,0.26,ROOT.kBlack,"unweighted",angle=75,size=0.08)
-    draw_text(0.016,0.49,ROOT.kBlack,"re-weighted",angle=75,size=0.08)
+      
+    draw_text(0.015,0.22,ROOT.kBlack,"unweighted",angle=75,size=0.08)
+    draw_text(0.015,0.49,ROOT.kBlack,"re-weighted",angle=75,size=0.08)
     isrcan.canvas.Update()
 
     for i, s in enumerate(unw) :
-        t_u = " %.2f"%s.nom_yield[thisr]
-        t_l = "#pm%.2f"%s.stat_err[thisr]
+        t_u = " %.1f"%s.nom_yield[thisr]
+        t_l = "#pm%.1f"%s.stat_err[thisr]
         print float(i+0.02)/20.0
-        draw_text(i+0.1,0.58,text=t_u, color=ROOT.kBlack,ndc=False,size=0.08)
-        draw_text(i+0.1,0.14,text=t_l, color=ROOT.kBlack,ndc=False,size=0.08)
+        draw_text(i+0.1,0.54,text=t_u, color=ROOT.kBlack,ndc=False,size=0.07, font=42)
+        draw_text(i+0.1,0.05,text=t_l, color=ROOT.kBlack,ndc=False,size=0.07, font=42)
         isrcan.canvas.Update()
         
     for i, s in enumerate(isr) :
-        t_u = " %.2f"%s.nom_yield[thisr]
-        t_l = "#pm%.2f"%s.total_error(thisr)
+        t_u = "%.1f"%s.nom_yield[thisr]
+        t_s = "#pm%.1f"%s.stat_err[thisr]
+        t_sys = "#pm%.1f"%s.sym_err(thisr)
         print float(i+0.02)/20.0
-        draw_text(i+0.1,1.58,text=t_u, color=ROOT.kBlack,ndc=False,size=0.08)
-        draw_text(i+0.1,1.14,text=t_l, color=ROOT.kBlack,ndc=False,size=0.08)
+        draw_text(i+0.1,2.4,text=t_u, color=ROOT.kBlack,   ndc=False, size=0.07, font=42)
+        draw_text(i+0.1,1.8,text=t_s, color=ROOT.kBlack,   ndc=False, size=0.07, font=42)
+        draw_text(i+0.1,1.15,text=t_sys, color=ROOT.kBlack,ndc=False, size=0.07, font=42)
         isrcan.canvas.Update()
 
     # plot the pull plot on upper pad
@@ -300,24 +305,20 @@ def make_isr_pullplots(unw, isr, srs) :
     g.Draw("same a2")
     g.Draw("same p")
 
-    draw_text(0.9,0.83,ROOT.kBlack,thisr,ndc=True,size=0.08)   
+    draw_text(0.9,0.83,ROOT.kBlack,thisr,ndc=True,size=0.08)
+    draw_text(0.93,0.75,ROOT.kBlack, "mean", ndc=True, size=0.07)
+    draw_line(0.89, 0.77, 0.93, 0.77, ROOT.kRed, ndc=True)
     isrcan.canvas.Update()
     average_ratio = numpy.mean(ratios)
     draw_line(0.0, average_ratio, len(unw), average_ratio, color=ROOT.kRed)
+    draw_line(0.0, 1.0, len(unw), 1.0, color=ROOT.kBlue)
     print average_ratio
 
 
     ROOT.gPad.RedrawAxis()
     isrcan.canvas.Update()
-    
-
-    
 
     isrcan.canvas.SaveAs("test.eps")
-
-
-
-
 
 ###########################################
 if __name__=="__main__" :
