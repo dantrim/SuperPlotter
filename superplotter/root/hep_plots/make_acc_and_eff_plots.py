@@ -37,9 +37,9 @@ def get_n_passing_selection(signals, region, is_truth) :
         cmd = "isOS>>hist" # TODO: find out why "isMC" won't work, "isOS" is unsafe
         cut = ""
         if is_truth :
-            cut = "(%s)*%s"%(get_region_tcut(region),"1")
+            cut = "(%s) * isr_weight_nom"%(get_region_tcut(region)) # apply c1c1 re-weighting to truth
         else :
-            cut = "(%s)*eventweight"%(get_region_tcut(region))
+            cut = "(%s) * eventweight"%(get_region_tcut(region)) # reco samples' "eventweight" contains isr re-weighting
         sig.tree.Draw(cmd, cut)
         n_passing = hist.Integral(0,-1)
         if is_truth :
@@ -99,7 +99,8 @@ def make_acceptance_and_efficiency_graphs(signals, region, grid, outdir) :
     
     # put pen to paper
     r.gStyle.SetPaintTextFormat('.3f')
-    for s in ['acceptance', 'efficiency'] :
+    #for s in ['acceptance', 'efficiency', 'ngen', 'xsec'] :
+    for s in ['xsec'] :
         histo_master = r.TH2F('h_'+s+"_"+region, title, 50, 90, 250, 50, 0, 250)
         g = r.TGraph2D(1)
         g.SetName('g_'+s)
@@ -111,9 +112,18 @@ def make_acceptance_and_efficiency_graphs(signals, region, grid, outdir) :
                 z = sig.acceptance
             elif s=='efficiency' :
                 z = sig.efficiency
+            elif s=='ngen' :
+                z = sig.n_generated
+            elif s=='xsec' :
+                z = sig.xsec
             if float(x) > 400 : continue
             if float(y) > 400 : continue
-            g.SetPoint(g.GetN(), float(x), float(y), float(z)*100)
+            if s=='acceptance' or s=='efficiency' :
+                g.SetPoint(g.GetN(), float(x), float(y), float(z)*100) # storing as percentage!!
+            elif s=='ngen' :
+                g.SetPoint(g.GetN(), float(x), float(y), float(z) / 1000)
+            elif s=='xsec' :
+                g.SetPoint(g.GetN(), float(x), float(y), float(z))
         c = r.TCanvas('c_'+g.GetName(),'',800,600)
         c.cd()
         c.SetRightMargin(2.5*c.GetRightMargin())
@@ -123,23 +133,36 @@ def make_acceptance_and_efficiency_graphs(signals, region, grid, outdir) :
 
         z_title = ''
         if 'accept' in g.GetName() : z_title = 'Acceptance [%]'
-        else : z_title = 'Efficiency [%]'
-        z_tex = r.TLatex(282, 150, z_title)
+        elif 'eff' in g.GetName()  : z_title = 'Efficiency [%]'
+        elif 'ngen' in g.GetName() : z_title = 'Events generated [k]'
+        elif 'xsec' in g.GetName() : z_title = 'Production Cross-Section [pb]'
+        z_title_x = 282
+        z_title_y = 150
+        if s=='ngen' : z_title_y = 110
+        elif s=='xsec' : z_title_y = 60
+        z_tex = r.TLatex(z_title_x, z_title_y, z_title)
         z_tex.SetTextAngle(90)
         z_tex.Draw('same')
         
         for sig in signals :
             tex = r.TLatex(0.0, 0.0, '')
-            tex.SetTextFont(histo_master.GetTitleFont())
+            tex.SetTextFont(42)
             tex.SetTextSize(0.6*tex.GetTextSize())
             x, y, z = sig.mX, sig.mY, 0.0
             if 'accept' in g.GetName() :
                 z = sig.acceptance
             elif 'effic' in g.GetName() :
                 z = sig.efficiency
+            elif 'ngen' in g.GetName() :
+                z = float(sig.n_generated) / 1000.
+            elif 'xsec' in g.GetName() :
+                z = float(sig.xsec)
             if float(x) >= 225 : continue
             if float(y) >= 225 : continue
-            tex.DrawLatex(float(x), float(y), "%.2f"%(100*float(z)))
+            if 'accept' in g.GetName() or 'effic' in g.GetName() :
+                tex.DrawLatex(float(x), float(y), "%.2f"%(100*float(z)))
+            elif 'ngen' in g.GetName() : tex.DrawLatex(float(x), float(y), "%.0f"%(float(z)))
+            elif 'xsec' in g.GetName() : tex.DrawLatex(float(x), float(y), "%.2f"%(float(z)))
         c.Update()
         xax = histo_master.GetXaxis()
         yax = histo_master.GetYaxis()
@@ -156,13 +179,19 @@ def make_acceptance_and_efficiency_graphs(signals, region, grid, outdir) :
         
         # labels, etc...
         drawAtlasLabel(c, "Internal",ypos=0.92)
-        topLeftLabel(c, '#sqrt{s} = 8 TeV, 20.3 fb^{-1}', ypos=0.86)
-        topLeftLabel(c, get_prod_label(grid),ypos=0.81)
-        topLeftLabel(c, "#bf{%s}"%get_nice_region_name(region),ypos=0.74)
+        topLeftLabel(c, '#sqrt{s} = 8 TeV, 20.3 fb^{-1}', ypos=0.88)
+        process_y = 0.84
+        if s=='ngen' : process_y = 0.87
+        if s=='xsec' : process_y = 0.83
+        topLeftLabel(c, get_prod_label(grid),ypos=process_y)
+        #topLeftLabel(c, "#bf{%s}"%get_nice_region_name(region),ypos=0.74)
         c.Update()
 
         outname = region
-        outname += '_accPERCENT' if 'accep' in g.GetName() else '_effPERCENT'
+        if 'accep' in g.GetName() : outname += '_acc'
+        elif 'eff' in g.GetName() : outname += '_eff'
+        elif 'ngen' in g.GetName() : outname += '_ngen'
+        elif 'xsex' in g.GetName() : outname += '_xsec'
         outname += '.eps'
         c.SaveAs(outname)
         
@@ -219,6 +248,7 @@ if __name__=="__main__" :
     print "\t%s truth points, %s reco points"%(str(len(truth_signals)), str(len(reco_signals)))
     print "--------------------------------------"
 
+    # give c1c1 weight to truth samples
     # get N_{fiducial} <==> N events in SR with selection applied on truth objects
     get_n_passing_selection(truth_signals, region, True) 
     # get N_{fiducial_reco} <==> N events in SR with selection applied on reconstructed objects
@@ -232,10 +262,3 @@ if __name__=="__main__" :
 
     
     make_acceptance_and_efficiency_graphs(truth_signals, region, grid, outdir) 
-    
-    
-         
-
-
-
-
