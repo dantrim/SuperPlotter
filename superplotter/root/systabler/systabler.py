@@ -22,17 +22,29 @@ import math
 # These are the systematic groupings
 # { group : name-that-appears-in-tables }
 
+# groupings for "original"
+#systematics_by_group = {}
+#systematics_by_group['Jet'] = ['JES', 'JER']
+#systematics_by_group['Lepton'] = [ 'EESZ', 'EER', 'EESMAT', 'ESF', 'MEFF', 'EESLOW', 'TES', 'EESPS', 'MS', 'MID', 'Electron trigger efficiency', 'Muon trigger efficiency' ]
+#systematics_by_group['b-tagging'] = [ 'BJET', 'BMISTAG', 'CJET' ]
+#systematics_by_group['MET soft-term'] = [ 'RESOST', 'SCALEST' ]
+#systematics_by_group['Non-prompt leptons'] = [ 'Fake estimate combined' ]
+#systematics_by_group['Modelling-Top'] = [ 'Top theory/generator', 'Top normalization' ]
+#systematics_by_group['Modelling-WW'] = [ 'WW theory/generator', 'WW normalization' ]
+#systematics_by_group['Modelling-ZV'] = [ 'ZV theory/generator', 'ZV normalization' ]
+#systematics_by_group['Luminosity'] = [ 'Lumi' ]
+
+# groupings for updated, without name-mapping
 systematics_by_group = {}
-systematics_by_group['Jet'] = ['JES', 'JER']
-systematics_by_group['Lepton'] = [ 'EESZ', 'EER', 'EESMAT', 'ESF', 'MEFF', 'EESLOW', 'TES', 'EESPS', 'MS', 'MID', 'Electron trigger efficiency', 'Muon trigger efficiency' ]
+systematics_by_group['Jet'] = [ 'JER', 'JES' ]
+systematics_by_group['Lepton'] = [ 'MMS', 'EESZ', 'ESF', 'EESLOW', 'EESMAT', 'EER', 'MEFF', 'MID', 'TES', 'EESPS', 'TRIGGERE', 'TRIGGERM' ]
+systematics_by_group['Modelling-Top'] = [ 'TT\_PS', 'Top\_SR\_other', 'mu\_Top', 'Top\_CR\_other' ]
+systematics_by_group['Modelling-WW'] = [ 'mu\_WW', 'WW\_THEORY' ]
+systematics_by_group['Modelling-ZV'] = [ 'mu\_ZV', 'ZV\_THEORY' ]
 systematics_by_group['b-tagging'] = [ 'BJET', 'BMISTAG', 'CJET' ]
 systematics_by_group['MET soft-term'] = [ 'RESOST', 'SCALEST' ]
-systematics_by_group['Non-prompt leptons'] = [ 'Fake estimate combined' ]
-systematics_by_group['Modelling-Top'] = [ 'Top theory/generator', 'Top normalization' ]
-systematics_by_group['Modelling-WW'] = [ 'WW theory/generator', 'WW normalization' ]
-systematics_by_group['Modelling-ZV'] = [ 'ZV theory/generator', 'ZV normalization' ]
+systematics_by_group['Non-prompt leptons'] = [ 'Fake\_RelUnc' ]
 systematics_by_group['Luminosity'] = [ 'Lumi' ]
-
 ############################################
 
 class Region :
